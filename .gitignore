@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.pem
+planning/private/
+test/e2e/.profile*/
+test/e2e/artifacts/
+.DS_Store

@@ -1,0 +1,34 @@
+{
+  "name": "nightshade",
+  "version": "0.1.0",
+  "description": "Per-site dark mode for Chrome that you, or your AI agent, configure site by site.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "nightshade": "dist/cli/nightshade.mjs"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "node scripts/build.mjs && node test/e2e/run.mjs",
+    "icons": "node scripts/make-icons.mjs",
+    "update-fixes": "node scripts/update-fixes.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "darkreader": "^4.9.135"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.7",
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
+    "playwright": "^1.65.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.12"
+  }
+}

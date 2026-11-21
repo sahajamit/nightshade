@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Dark mail</title>
+<style>
+  /* Imitates a site's own dark theme with the problem from the blueprint:
+     icons and checkbox outlines too dim to see. */
+  body { font: 14px/1.5 system-ui, sans-serif; background: #1f1f1f; color: #e3e3e3; margin: 0; }
+  .bar { display: flex; gap: 18px; align-items: center; padding: 12px 16px; }
+  .row { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-top: 1px solid #2c2c2c; }
+  .cb { width: 14px; height: 14px; border: 2px solid #3c3c3c; border-radius: 2px; }
+  .who { width: 110px; font-weight: 600; }
+  .faint { color: #4a4a4a; }
+  .bgicon { width: 20px; height: 20px; background: url(icons/trash.svg) center/20px no-repeat; }
+  .maskicon { display: inline-block; width: 20px; height: 20px; background-color: #3a3a3a; -webkit-mask: url(icons/trash.svg) center/20px no-repeat; }
+</style></head>
+<body>
+  <div class="bar">
+    <div role="checkbox" aria-checked="false" aria-label="Select" id="selectAll"><div class="cb" id="cbInner"></div></div>
+    <div role="button" aria-label="Archive" id="archive"><svg width="20" height="20" viewBox="0 0 20 20"><path id="archivePath" fill="#3c4043" d="M3 3h14v4H3zm1 5h12v9H4z"/></svg></div>
+    <div role="button" aria-label="Delete" id="delete"><img id="deleteImg" src="icons/trash.svg" width="20" height="20" alt=""></div>
+    <div role="button" aria-label="Report spam" id="spam"><div class="bgicon" id="spamIcon"></div></div>
+    <div role="button" aria-label="Snooze" id="snooze"><span class="maskicon" id="snoozeIcon"></span></div>
+  </div>
+  <div class="row"><div role="checkbox" aria-label="Select row 1"><div class="cb"></div></div><span class="who">Acme Mobile</span><span>Your bill is ready</span></div>
+  <div class="row"><div role="checkbox" aria-label="Select row 2"><div class="cb"></div></div><span class="who">GitHub</span><span id="faintText" class="faint">2 new commits pushed</span></div>
+</body></html>
