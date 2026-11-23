@@ -1,75 +1,95 @@
-<p align="center"><img src="docs/images/logo.png" alt="Nightshade logo: a crescent moon holding a berry" width="112" height="112"></p>
+<p align="center">
+  <img src="docs/images/logo.png" alt="Nightshade logo: a crescent moon holding a berry" width="96" height="96">
+</p>
 
-# Nightshade
+<h1 align="center">Nightshade</h1>
 
-[![CI](https://github.com/sahajamit/nightshade/actions/workflows/ci.yml/badge.svg)](https://github.com/sahajamit/nightshade/actions/workflows/ci.yml)
-[![Licence: MIT](https://img.shields.io/badge/licence-MIT-e2a75c.svg)](LICENSE)
+<p align="center">
+  <b>A Chrome extension for per-site dark mode that you, or your AI agent, control.</b><br>
+  Pick which sites go dark and in which colours. Keep the sites that already have a good dark theme, and fix what their themes break.
+</p>
 
-Per-site dark mode for Chrome that you control site by site, from a popup or by asking your AI agent.
+<p align="center">
+  <a href="https://github.com/sahajamit/nightshade/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/sahajamit/nightshade?color=e2a75c"></a>
+  <a href="https://github.com/sahajamit/nightshade/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/sahajamit/nightshade/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="Licence: MIT" src="https://img.shields.io/badge/licence-MIT-e2a75c.svg"></a>
+  <img alt="Works in Chrome, Brave and Edge" src="https://img.shields.io/badge/works%20in-Chrome%20%7C%20Brave%20%7C%20Edge-3b4043">
+  <img alt="No tracking" src="https://img.shields.io/badge/tracking-none-3b4043">
+</p>
 
-## Why I built this
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#use-it-with-your-ai-agent">Agent setup</a> ·
+  <a href="#why-nightshade">Why</a> ·
+  <a href="AGENTS.md">Agent guide</a> ·
+  <a href="SECURITY.md">Security</a>
+</p>
 
-Bright screens strain my eyes, so I run dark mode everywhere I can. For years that meant [Dark Reader](https://chromewebstore.google.com/detail/dark-reader/eimadpbcbfnmbkopoojfekhnkhdbieeh), the best-known dark-mode extension on the Chrome Web Store. It is a great piece of work, but three things kept bothering me.
+<p align="center">
+  <img src="docs/images/before-after.png" alt="The same article page, light on the left without Nightshade and dark on the right with it" width="820">
+</p>
 
-**1. I was handing my whole browser to code I had never read.** A dark-mode extension needs to read and change every page you open: your inbox, your bank, your company's internal tools. Installing one from the Chrome Web Store means trusting a bundle that updates itself silently, that you never see the source of, and that can change owners overnight. Extensions have been bought and quietly turned into spyware before. With AI agents now reading web pages, browsing for us and running tools on our machines, the browser is a bigger target than ever. I did not want an opaque, auto-updating extension sitting in the middle of all that.
+## Contents
 
-**2. Configuring it one site at a time, by hand, was tedious.** Most sites I use already have a good dark theme (Gmail, LinkedIn, X). I did not want them recoloured, I wanted them left alone, with only the bits their dark themes break fixed: an invisible delete button, checkboxes you cannot see, an open email that is still bright white. Other sites I wanted dark, and a few I wanted in my own colours. Getting there meant clicking through a popup on every site, and the settings lived inside the extension where nothing else could see or change them.
+- [Why Nightshade](#why-nightshade)
+- [Features](#features)
+- [Install](#install)
+- [Use it with your AI agent](#use-it-with-your-ai-agent)
+- [Everyday use](#everyday-use)
+- [Configuration](#configuration)
+- [Privacy and permissions](#privacy-and-permissions)
+- [Development](#development)
+- [Known limits](#known-limits)
+- [Credits and licence](#credits-and-licence)
 
-**3. I wanted to just tell my agent.** I already ask an AI agent to do most of my computer chores. "Turn dark mode on for these three sites and leave everything else light." "Use a Dracula palette on GitHub." "The checkboxes on Gmail are hard to see." Those should be one sentence to an agent, not ten minutes of clicking.
+## Why Nightshade
 
-So I built Nightshade, for myself first:
+Bright screens strain my eyes, so I used [Dark Reader](https://chromewebstore.google.com/detail/dark-reader/eimadpbcbfnmbkopoojfekhnkhdbieeh), the best-known dark-mode extension, for years. Three things kept bothering me:
 
-- **You can read all of it.** Every line is here, it is MIT-licensed, and you build it or download a release yourself. It never updates itself behind your back, has no analytics, and talks to no server. The only code it depends on is [Dark Reader](https://github.com/darkreader/darkreader)'s open-source colour engine, pinned to an exact version.
-- **Your settings are one plain JSON file**, `~/.nightshade/config.json`, that you or any agent can read, diff, back up and edit.
-- **Any agent can drive it.** A small CLI validates every change, and an optional bridge pushes edits into your open tabs within a second. One command installs a skill that tells your coding agents Nightshade is there, so you can ask for a change from any folder. It works with Claude Code, Codex, Cursor, Gemini CLI or a shell script: anything that can run a command.
+- **Trust.** A dark-mode extension reads and changes every page you open, including your inbox, your bank and your work tools. Store extensions update themselves silently, you never see the code, and they can change owners overnight. With AI agents now browsing and running tools for us, I wanted code I could read and build myself.
+- **Clicking through every site by hand.** Sites with a good dark theme of their own (Gmail, LinkedIn, X) should be left alone, with only what their themes break fixed. Others should go dark, and a few should use my own colours. Getting there meant a popup per site, with settings locked inside the extension.
+- **I wanted to just tell my agent.** "Dark mode on these three sites, everything else light" or "Dracula colours on GitHub" should be one sentence, not ten minutes of clicking.
 
-What that looks like in practice:
+So Nightshade is open source, never updates itself behind your back, keeps every setting in one plain JSON file, and comes with a CLI and a skill so any coding agent can change it for you.
 
-```sh
-# Only these sites go dark; everything else stays as the site made it
-nightshade global --unlisted only-listed
-nightshade set github.com --mode dynamic
-nightshade set news.ycombinator.com --mode dynamic
+## Features
 
-# Your own theme, for example Dracula colours, on a site of your choice
-nightshade palette set dracula --bg '#282a36' --surface '#44475a' --text '#f8f8f2' \
-  --muted '#6272a4' --link '#8be9fd' --border '#44475a' --icon '#bd93f9' --selection '#44475a'
-nightshade set github.com --mode bespoke --palette dracula
+| | |
+| --- | --- |
+| **One rule per site** | Each site gets its own mode, sliders, palette, custom CSS and element fixes. The most specific rule wins (`mail.google.com/mail` beats `mail.google.com` beats `google.com`). |
+| **Five modes** | *Off*, *Native* (keep the site's own dark theme), *Dynamic* (Dark Reader's colour engine), *Filter* (full-page invert, for canvas apps like Google Docs) and *Bespoke* (your own palette, such as Dracula). |
+| **Fixes for broken dark themes** | A contrast floor lifts dim text, icons and checkbox borders to 3:1, 4.5:1 or 7:1. Icon rescue lightens small dark icons. Both work by role and size, not class names, so they survive site redesigns. |
+| **Point and fix** | Click anything broken and choose *make visible*, *invert*, *set colour*, *strengthen border*, *leave untouched*, *hide* or *darken bright areas* (for a white panel on a dark site, like an open email). The fix is saved with a stable selector. |
+| **Agent-ready** | One JSON file, a CLI that validates every change, a bridge that updates open tabs within a second, and a skill for Claude Code, Codex, Gemini CLI and Cursor. |
+| **Private by design** | No analytics, no server, no remote code. MIT licensed. |
 
-# Sites with their own dark theme: keep it, just fix what it breaks
-nightshade set mail.google.com --mode native --contrast-floor 4.5
-nightshade fix add mail.google.com body darken      # the white open-email pane
-```
-
-Or just say it to your agent and let it run those for you.
-
-## What it does
-
-Nightshade is built on Dark Reader's colour engine. What it adds:
-
-- **One rule per site.** Each site gets its own mode, sliders, palette, custom CSS and element fixes. The most specific rule wins (`mail.google.com/mail` beats `mail.google.com` beats `google.com`).
-- **Five modes.** Off, Native (keep the site's own dark theme), Dynamic (Dark Reader recolouring), Filter (full-page invert, for canvas apps like Google Docs) and Bespoke (your own palette).
-- **Boosts that fix what dark themes break.** A contrast floor lifts dim text, icons and checkbox borders until they reach 3:1, 4.5:1 or 7:1. Icon rescue lightens small dark glyph images. Both find elements by role and size, not by class names, so they keep working when a site ships new CSS.
-- **Fix an element.** Point at anything broken, pick *make visible*, *invert*, *set colour*, *strengthen border*, *leave untouched*, *hide* or *darken bright areas*. The last one fixes a dark site that still shows one panel in white (webmail's open message, for example): only light panels on a dark background are inverted, and photos are flipped back. The fix is saved to that site's rule with a stable selector.
-- **Agent-friendly by design.** All settings live in one JSON file (`~/.nightshade/config.json`) with a CLI that validates every change. An optional native-messaging bridge pushes file changes into open tabs within a second, so "make LinkedIn warmer" is one command for an agent.
-
-![A dim dark-theme inbox with icons and checkboxes lifted to readable contrast](docs/images/boosts.png)
+<table>
+  <tr>
+    <td align="center" width="34%"><img src="docs/images/popup.png" alt="The Nightshade popup: mode switch, sliders, contrast floor and icon rescue" width="260"><br><sub>The popup: one site at a time</sub></td>
+    <td align="center" width="66%"><img src="docs/images/picker.png" alt="The element picker over a page, listing fix actions" width="520"><br><sub>The element picker: fix one broken thing</sub></td>
+  </tr>
+</table>
 
 ## Install
 
-Nightshade is not on the Chrome Web Store. You load it yourself, which takes a minute.
-
-### From a release (no build tools needed)
+Nightshade is not on the Chrome Web Store. Loading it yourself takes a minute:
 
 1. Download `nightshade-<version>.zip` from the [latest release](https://github.com/sahajamit/nightshade/releases/latest).
-2. Unzip it somewhere you will keep it (Chrome loads the extension from that folder every time it starts).
-3. Open `chrome://extensions`, switch on **Developer mode**, click **Load unpacked** and choose the unzipped `nightshade-<version>` folder.
+2. Unzip it somewhere you will keep it. Chrome loads the extension from that folder every time it starts.
+3. Open `chrome://extensions`, switch on **Developer mode**, click **Load unpacked** and choose the unzipped folder.
 
-To update, replace the folder's contents with the new release and press the reload button on Nightshade's card in `chrome://extensions`. Your settings are kept.
+That's it. Sites without a rule get the default: light sites go dark, sites that are already dark are left alone.
 
-The same steps work in Chromium, Brave and Edge. Each release also carries `nightshade-cli-<version>.zip` (the command line and the agent bridge, for Node 20 or newer) and `SHA256SUMS.txt`.
+A few notes:
 
-### From source
+- It works the same in Chromium, Brave and Edge. Repeat step 3 in each browser profile you use.
+- Switch off Dark Reader or any other dark-mode extension so the two don't stack.
+- Chrome may remind you about developer-mode extensions at startup. That is normal for any extension loaded this way.
+- To update, replace the folder's contents with a new release and click reload on Nightshade's card. Your settings are kept.
+- Each release also has `SHA256SUMS.txt` to verify the download.
+
+<details>
+<summary><b>Build from source instead</b></summary>
 
 ```sh
 git clone https://github.com/sahajamit/nightshade.git
@@ -78,27 +98,39 @@ npm install
 npm run build
 ```
 
-Then in Chrome: open `chrome://extensions`, switch on **Developer mode**, click **Load unpacked** and choose `dist/extension`.
+Then **Load unpacked** and choose `dist/extension`.
 
-### After installing
+</details>
 
-- Do the **Load unpacked** step in each Chrome profile where you want Nightshade.
-- If you also run Dark Reader or another dark-mode extension, switch it off so the two don't stack.
-- Chrome may show a "Disable developer mode extensions" reminder at startup. That is normal for any extension loaded this way.
+## Use it with your AI agent
 
-### Set it up for your AI agent (optional)
-
-From a source checkout:
+Three commands, once. They need Node 20 or newer.
 
 ```sh
-npm link                      # puts `nightshade` on your PATH
-nightshade bridge install     # registers the bridge with Chrome, Chromium, Brave and Edge
+npm link                      # puts `nightshade` on your PATH (from a source checkout)
+nightshade bridge install     # live updates from the config file into open tabs
 nightshade skill install      # tells your coding agents that Nightshade is here
 ```
 
-From the release's `nightshade-cli-<version>.zip`, unzip it and run `node cli/nightshade.mjs bridge install` and `node cli/nightshade.mjs skill install` (and use `node cli/nightshade.mjs` wherever this page says `nightshade`). The bridge is for macOS and Linux for now.
+Using the release instead of a checkout? Unzip `nightshade-cli-<version>.zip` and run `node cli/nightshade.mjs` wherever this page says `nightshade`. Then open Nightshade's options page, **Agent bridge**, **Reconnect** (or restart Chrome).
 
-`skill install` copies [skills/nightshade/SKILL.md](skills/nightshade/SKILL.md) into the skills folder of every coding agent it finds:
+Now start a new agent session and just ask, from any folder:
+
+| You say | Your agent runs |
+| --- | --- |
+| "Only darken the sites I list" | `nightshade global --unlisted only-listed` |
+| "Dark mode on GitHub" | `nightshade on github.com` |
+| "Use Dracula colours on GitHub" | `nightshade palette set dracula --bg '#282a36' ...` then `nightshade set github.com --mode bespoke --palette dracula` |
+| "Keep Gmail's own dark theme, but the open email is still white" | `nightshade set mail.google.com --mode native` then `nightshade fix add mail.google.com body darken` |
+| "Checkboxes on Gmail are hard to see" | `nightshade fix add mail.google.com '[role=checkbox]' strengthen-border` |
+| "Warmer, it's late" | `nightshade global --warmth 20` |
+
+Every command validates before it writes and supports `--json`. Changes made in the popup are written back to the same file, so the file is always the full picture. Without the bridge, the extension works on its own and the options page imports and exports the file.
+
+<details>
+<summary><b>Where the skill is installed, and options</b></summary>
+
+`nightshade skill install` copies [skills/nightshade/SKILL.md](skills/nightshade/SKILL.md) into the skills folder of every coding agent it finds:
 
 | Agent | Skill goes to |
 | --- | --- |
@@ -106,49 +138,34 @@ From the release's `nightshade-cli-<version>.zip`, unzip it and run `node cli/ni
 | Codex, Gemini CLI | `~/.agents/skills/nightshade/` (both read this shared folder) |
 | Cursor | `~/.cursor/skills/nightshade/` |
 
-Start a new agent session afterwards. From then on, "use Dracula colours on GitHub" or "the checkboxes on Gmail are hard to see" works from any folder: the agent loads the skill and runs the right commands. Useful options:
-
 - `--agent claude,codex` installs for those agents only.
-- `--pointer` also adds one line to the agent's global instructions file (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`), for agents or setups that do not load skills.
+- `--pointer` also adds one line to the agent's global instructions file (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`).
 - `nightshade skill status` shows what is installed; `nightshade skill uninstall` removes only what Nightshade wrote.
+- If `nightshade` is not on your PATH, the installed skill names the exact command to run instead. Run `skill install` again after moving or updating your copy.
 
-If `nightshade` is not on your PATH (for example, you run it from the release zip), the installed skill names the exact command to run instead. Run `skill install` again after you move or update your Nightshade copy. Any other agent can use the same file: point it at `skills/nightshade/SKILL.md` or [AGENTS.md](AGENTS.md).
+Any other agent can read the same file, or [AGENTS.md](AGENTS.md), the full guide.
 
-Every build, from source or from a release, has the same extension ID (`cilhiaedhodolblheagjkpjgfnananpf`), because the manifest carries a fixed public key. The bridge only accepts that ID, so it works without extra setup.
+</details>
 
-Open Nightshade's options page → **Agent bridge** → **Reconnect** (or restart Chrome). From then on:
+<details>
+<summary><b>How the bridge works</b></summary>
 
-```sh
-nightshade set linkedin.com --mode native --contrast-floor 4.5
-nightshade set example.com --mode bespoke --palette lamplight --warmth 15
-nightshade fix add mail.google.com '[role=checkbox]' strengthen-border
-nightshade off mybank.example
-nightshade site https://mail.google.com/   # what applies here, and why
-nightshade show --json
-```
+The bridge is a small native-messaging host (macOS and Linux for now) that watches `~/.nightshade/config.json` and syncs it with the extension both ways. It only accepts Nightshade's extension ID, `cilhiaedhodolblheagjkpjgfnananpf`, which is the same for every build because the manifest carries a fixed public key. Details in [docs/agent-bridge.md](docs/agent-bridge.md).
 
-Changes made in the popup are written back to the same file, so the file is always the full picture. Without the bridge, the extension works on its own and the options page can import and export the file.
+</details>
 
-See [AGENTS.md](AGENTS.md) for the full guide written for AI agents (the skill is its short version), and [docs/agent-bridge.md](docs/agent-bridge.md) for how the bridge works.
-
-## Using it
+## Everyday use
 
 | Where | What |
 | --- | --- |
 | Toolbar popup | Mode for this site, brightness, contrast, warmth, image brightness, contrast floor, icon rescue, palette, pause for an hour |
 | `Alt+Shift+N` | Turn Nightshade on or off for this site |
-| `Alt+Shift+P`, or right-click → *Nightshade: fix this element* | Fix one element |
+| `Alt+Shift+P`, or right-click, *Nightshade: fix this element* | Fix one element |
 | Options page | All site rules, global defaults, palettes, the raw config, bridge status |
 
-Sites without a rule follow the global default. Out of the box that means: recolour light sites with Dynamic mode, and leave sites that are already dark alone (only the boosts run there).
-
-## Permissions and privacy
-
-Nightshade runs on every site (`<all_urls>`), because dark mode has to restyle whatever page you open, and Dark Reader's engine needs to read the stylesheets and images a page loads from other origins. It has no analytics, talks to no server of its own and loads no remote code. The `nativeMessaging` permission is used only by the optional bridge, and does nothing until you run `nightshade bridge install`.
-
-[SECURITY.md](SECURITY.md) lists each permission, the trust boundaries, and how to report a vulnerability.
-
 ## Configuration
+
+Everything lives in `~/.nightshade/config.json`:
 
 ```json
 {
@@ -163,46 +180,53 @@ Nightshade runs on every site (`<all_urls>`), because dark mode has to restyle w
 }
 ```
 
-`nightshade schema` prints every field with its allowed values. `nightshade validate` checks a file without touching anything.
+`nightshade schema` prints every field and its allowed values. `nightshade validate` checks a file without changing anything. `nightshade help` lists every command.
+
+## Privacy and permissions
+
+Nightshade runs on every site (`<all_urls>`) because dark mode has to restyle whatever page you open, and Dark Reader's engine needs to read the stylesheets and images a page loads from other origins. It has no analytics, talks to no server of its own and loads no remote code. The `nativeMessaging` permission is used only by the optional bridge and does nothing until you run `nightshade bridge install`.
+
+[SECURITY.md](SECURITY.md) lists each permission, the trust boundaries, and how to report a vulnerability privately.
 
 ## Development
 
 ```sh
 npm run build        # dist/extension, dist/cli, dist/bridge
-npm run package      # release/nightshade-<version>.zip and release/nightshade-cli-<version>.zip
-npm run icons        # regenerate every icon from assets/logo/nightshade-logo.png
 npm run watch
 npm run typecheck
 npm test             # unit tests (vitest)
 npm run test:e2e     # loads the extension in Playwright's Chromium against local fixtures
-node test/e2e/run.mjs --real   # also visits a few public sites and saves screenshots
+npm run package      # release zips in release/
+npm run icons        # regenerate every icon from assets/logo/nightshade-logo.png
+npm run update-fixes # refresh the vendored Dark Reader fix lists
 ```
 
-Source layout:
+<details>
+<summary><b>Source layout</b></summary>
 
 ```
-src/shared      config model, validation, URL matching, colour maths, CSS generation
-src/background  service worker: rule resolution, Dark Reader fix lists, image analysis, bridge client
-src/content     content script: modes, dark-page detection, boosts, element picker
-src/popup       toolbar popup
-src/options     options page
-src/cli         the nightshade CLI
-src/bridge      native-messaging host that syncs the config file
+src/shared         config model, validation, URL matching, colour maths, CSS generation
+src/background     service worker: rule resolution, Dark Reader fix lists, image analysis, bridge client
+src/content        content script: modes, dark-page detection, boosts, element picker
+src/popup          toolbar popup
+src/options        options page
+src/cli            the nightshade CLI
+src/bridge         native-messaging host that syncs the config file
 skills/nightshade  the agent skill installed by `nightshade skill install`
 vendor/darkreader  Dark Reader's community site-fix lists (MIT)
-assets/logo     master logo; icons are derived from it
+assets/logo        master logo; icons are derived from it
 ```
 
-`npm run update-fixes` refreshes the vendored Dark Reader lists from upstream.
+</details>
 
-Pushing a tag like `v0.1.0` (matching the version in `package.json`) runs the release workflow, which builds, tests and attaches the zips to a GitHub release. See [CONTRIBUTING.md](CONTRIBUTING.md) before sending a pull request.
+Pushing a tag like `v0.1.0` (matching `package.json`) runs the release workflow, which builds, tests and attaches the zips to a GitHub release. Read [CONTRIBUTING.md](CONTRIBUTING.md) before sending a pull request.
 
-### Known limits
+## Known limits
 
 - Chrome doesn't let extensions run on `chrome://` pages or the Chrome Web Store.
-- Dark Reader's page-world stylesheet proxy can't be injected from a content script, so a few CSS-in-JS sites that only change styles through the CSSOM may update their dark colours a beat late.
-- Already-dark detection runs once per page load. A single-page app that changes theme later needs a rule.
+- A few CSS-in-JS sites that change styles only through the CSSOM may update their dark colours a beat late, because Dark Reader's page-world stylesheet proxy can't be injected from a content script.
+- Already-dark detection runs once per page load. A single-page app that switches theme later needs a rule.
 
 ## Credits and licence
 
-MIT. Nightshade is an independent project and is not affiliated with or endorsed by Dark Reader. It bundles the [darkreader](https://www.npmjs.com/package/darkreader) library and vendors Dark Reader's site-fix lists, both MIT-licensed by Dark Reader Ltd. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+MIT. Nightshade is an independent project, not affiliated with or endorsed by Dark Reader. It bundles the [darkreader](https://www.npmjs.com/package/darkreader) library and vendors Dark Reader's site-fix lists, both MIT-licensed by Dark Reader Ltd. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
