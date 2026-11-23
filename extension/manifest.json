@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Nightshade",
+  "short_name": "Nightshade",
+  "version": "0.1.0",
+  "description": "Per-site dark mode you control, from a popup or from your AI agent.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy+9U5tECF+bWGncVhXjyYEIf7vC66zBdFwvwGBdI0djsM0nML1Bt7wtDjRLoB90j42oQFGTB3gIMI5bVNMmqcuaNyG2+F0oswbLDY4Xw+0TF9xp0sh/cdkewrayZzI+X9fiYjYPHioF05oQ3PBZgP3qbYXq/AzFjFLbOvEYIS1SXyBm/i9M6Bj/elC6fmB3GeUV1BrXkX21Njh1Tbvb2XP1n1h+2/iES8ixgSQefn09I8iS3ux9kj76lZmZLfmB2fCzTiw5oELZt327KpHVgTYVzppZAFGRlZmrxT95JBvCm3rwrimU/kjirAlzw/7UGDf4iU2ptVoyS3wGZ5bz/VwIDAQAB",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage", "alarms", "contextMenus", "nativeMessaging"],
+  "host_permissions": ["<all_urls>"],
+  "background": {"service_worker": "background.js", "type": "module"},
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true
+    }
+  ],
+  "action": {
+    "default_title": "Nightshade",
+    "default_popup": "popup.html",
+    "default_icon": {"16": "icons/on-16.png", "32": "icons/on-32.png", "48": "icons/on-48.png"}
+  },
+  "options_page": "options.html",
+  "icons": {"16": "icons/on-16.png", "32": "icons/on-32.png", "48": "icons/on-48.png", "128": "icons/on-128.png"},
+  "commands": {
+    "toggle-site": {"suggested_key": {"default": "Alt+Shift+N"}, "description": "Turn Nightshade on or off for this site"},
+    "pick-element": {"suggested_key": {"default": "Alt+Shift+P"}, "description": "Fix an element on this page"}
+  }
+}

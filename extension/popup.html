@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nightshade</title>
+<link rel="stylesheet" href="ui.css">
+<style>
+  body { width: 340px; }
+  header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  header img { width: 20px; height: 20px; border-radius: 4px; }
+  .host { font-weight: 700; font-size: 14px; word-break: break-all; }
+  .scope { font-size: 11.5px; color: var(--muted); }
+  header .switch { margin-left: auto; }
+  main { padding: 12px 14px; display: grid; gap: 12px; }
+  .help { font-size: 12px; color: var(--muted); min-height: 34px; }
+  .sl { display: grid; grid-template-columns: 74px minmax(0, 1fr) 40px; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+  .sl output { text-align: right; font-family: var(--mono); font-size: 11px; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .row label { font-size: 12px; color: var(--muted); }
+  .stats { font-size: 11.5px; color: var(--faint); }
+  footer { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); align-items: center; flex-wrap: wrap; }
+  footer .bridge { width: 100%; font-size: 11.5px; color: var(--muted); }
+  .blocked { padding: 22px 16px; color: var(--muted); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="blocked" class="blocked" hidden>Chrome doesn't let extensions change this page.</div>
+<div id="app" hidden>
+  <header>
+    <img id="fav" alt="" src="icons/on-32.png">
+    <div><div class="host" id="host"></div><div class="scope" id="scope"></div></div>
+    <button class="switch" id="enabled" role="switch" aria-checked="true" aria-label="Nightshade on this site"></button>
+  </header>
+  <main>
+    <div class="seg" id="modes" role="group" aria-label="Mode">
+      <button type="button" data-mode="off">Off</button>
+      <button type="button" data-mode="native">Native</button>
+      <button type="button" data-mode="dynamic">Dynamic</button>
+      <button type="button" data-mode="filter">Filter</button>
+      <button type="button" data-mode="bespoke">Bespoke</button>
+    </div>
+    <div class="help" id="help"></div>
+    <div id="sliders">
+      <div class="sl"><label for="brightness">Brightness</label><input type="range" id="brightness" min="50" max="150"><output for="brightness"></output></div>
+      <div class="sl"><label for="contrast">Contrast</label><input type="range" id="contrast" min="50" max="150"><output for="contrast"></output></div>
+      <div class="sl"><label for="sepia">Warmth</label><input type="range" id="sepia" min="0" max="100"><output for="sepia"></output></div>
+      <div class="sl"><label for="imageDim">Images</label><input type="range" id="imageDim" min="50" max="100"><output for="imageDim"></output></div>
+    </div>
+    <div class="row">
+      <label for="floor">Contrast floor</label>
+      <select id="floor"><option value="0">Off</option><option value="3">3:1</option><option value="4.5">4.5:1</option><option value="7">7:1</option></select>
+      <button type="button" class="chip" id="icons" aria-pressed="false">Icon rescue</button>
+    </div>
+    <div class="row" id="paletteRow">
+      <label for="palette">Palette</label><select id="palette"></select>
+    </div>
+    <div class="stats" id="stats"></div>
+  </main>
+  <footer>
+    <button type="button" class="btn pri" id="pick">Fix an element</button>
+    <button type="button" class="btn" id="pause">Pause 1 hour</button>
+    <button type="button" class="btn" id="reset" title="Remove this site's rule">Reset</button>
+    <button type="button" class="btn" id="options">Options</button>
+    <div class="bridge" id="bridge"></div>
+  </footer>
+</div>
+<script src="popup.js" type="module"></script>
+</body>
+</html>

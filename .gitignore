@@ -1,0 +1,12 @@
+node_modules/
+dist/
+release/
+*.pem
+*.key
+*.crx
+.env
+.env.*
+planning/private/
+test/e2e/.profile*/
+test/e2e/artifacts/
+.DS_Store

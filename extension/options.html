@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nightshade options</title>
+<link rel="stylesheet" href="ui.css">
+<style>
+  body { min-height: 100vh; }
+  .shell { display: grid; grid-template-columns: 190px minmax(0, 1fr); min-height: 100vh; }
+  nav { background: var(--surface); border-right: 1px solid var(--line); padding: 18px 10px; }
+  nav h1 { font-size: 16px; margin: 0 10px 16px; display: flex; gap: 8px; align-items: center; }
+  nav h1 img { width: 22px; height: 22px; }
+  nav button { display: block; width: 100%; text-align: left; padding: 7px 10px; border-radius: 7px; border: 0; background: none; color: var(--muted); cursor: pointer; }
+  nav button[aria-current="page"] { background: var(--surface-2); color: var(--fg); }
+  main { padding: 24px 28px 60px; min-width: 0; max-width: 1000px; }
+  h2 { font-size: 20px; margin: 0 0 6px; }
+  p.lede { color: var(--muted); margin: 0 0 18px; max-width: 70ch; }
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 9px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font: 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--surface); }
+  tr:last-child td { border-bottom: 0; }
+  .form { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px 18px; align-items: center; max-width: 720px; }
+  .form .hint { grid-column: 2; color: var(--faint); font-size: 12px; margin-top: -8px; }
+  .add { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; }
+  textarea#json { width: 100%; min-height: 460px; font: 12px/1.5 var(--mono); }
+  .msg { margin: 10px 0; font-size: 13px; }
+  .msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); white-space: pre-wrap; }
+  .pal { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .pal .card { border: 1px solid var(--line); border-radius: 9px; padding: 12px; background: var(--surface); }
+  .pal .tok { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; font-size: 12.5px; }
+  .pal input[type=color] { width: 40px; height: 24px; border: 0; background: none; padding: 0; }
+  pre { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; font: 12px/1.5 var(--mono); }
+  [hidden] { display: none !important; }
+  @media (max-width: 700px) { .shell { grid-template-columns: 1fr; } nav { display: flex; flex-wrap: wrap; } .form { grid-template-columns: 1fr; } .form .hint { grid-column: 1; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav aria-label="Sections">
+    <h1><img src="icons/on-48.png" alt="">Nightshade</h1>
+    <button type="button" data-tab="sites" aria-current="page">Sites</button>
+    <button type="button" data-tab="global">Global default</button>
+    <button type="button" data-tab="palettes">Palettes</button>
+    <button type="button" data-tab="json">Config file</button>
+    <button type="button" data-tab="agent">Agent bridge</button>
+  </nav>
+  <main>
+    <section id="tab-sites">
+      <h2>Sites</h2>
+      <p class="lede">One rule per site. The most specific pattern wins: a path beats a host, a host beats its parent domain. Sites without a rule use the global default.</p>
+      <div class="add">
+        <input type="text" id="newPattern" placeholder="example.com or app.example.com/inbox" aria-label="New site pattern" size="34">
+        <select id="newMode" aria-label="Mode for new site"><option>native</option><option selected>dynamic</option><option>filter</option><option>bespoke</option><option>off</option></select>
+        <button type="button" class="btn pri" id="addSite">Add site</button>
+      </div>
+      <div class="msg" id="sitesMsg"></div>
+      <div class="scroll"><table><thead><tr><th>Site</th><th>Mode</th><th>Boosts</th><th>Fixes</th><th>Note</th><th></th></tr></thead><tbody id="sites"></tbody></table></div>
+    </section>
+
+    <section id="tab-global" hidden>
+      <h2>Global default</h2>
+      <p class="lede">Applies to every site without its own rule, and fills in anything a rule leaves out.</p>
+      <div class="form" id="globalForm">
+        <label for="g-enabled">Nightshade on</label><select id="g-enabled"><option value="true">On</option><option value="false">Off everywhere</option></select>
+        <label for="g-unlisted">Sites without a rule</label>
+        <select id="g-unlisted"><option value="skip-already-dark">Darken, but skip sites already dark</option><option value="always">Darken every site</option><option value="only-listed">Leave them alone</option></select>
+        <label for="g-mode">Default mode</label><select id="g-mode"><option>dynamic</option><option>filter</option><option>bespoke</option></select>
+        <label for="g-palette">Default palette</label><select id="g-palette"></select>
+        <label for="g-brightness">Brightness %</label><input type="number" id="g-brightness" min="50" max="150">
+        <label for="g-contrast">Contrast %</label><input type="number" id="g-contrast" min="50" max="150">
+        <label for="g-sepia">Warmth (sepia) %</label><input type="number" id="g-sepia" min="0" max="100">
+        <label for="g-grayscale">Grayscale %</label><input type="number" id="g-grayscale" min="0" max="100">
+        <label for="g-contrastFloor">Contrast floor</label><select id="g-contrastFloor"><option value="0">Off</option><option value="3">3:1</option><option value="4.5">4.5:1</option><option value="7">7:1</option></select>
+        <label for="g-iconRescue">Icon rescue</label><select id="g-iconRescue"><option value="true">On</option><option value="false">Off</option></select>
+        <label for="g-imageDim">Image brightness %</label><input type="number" id="g-imageDim" min="50" max="100">
+        <span class="hint">100 = images untouched.</span>
+        <label for="g-fontFamily">Font override</label><input type="text" id="g-fontFamily" placeholder="Site's own fonts">
+        <label for="g-useBuiltInFixes">Community site fixes</label><select id="g-useBuiltInFixes"><option value="true">Use Dark Reader's fixes</option><option value="false">Off</option></select>
+      </div>
+      <p><button type="button" class="btn pri" id="saveGlobal">Save</button></p>
+      <div class="msg" id="globalMsg"></div>
+    </section>
+
+    <section id="tab-palettes" hidden>
+      <h2>Palettes</h2>
+      <p class="lede">Used by Bespoke mode. Background and text drive the recolouring; every colour is available to custom CSS as <span class="mono">var(--ns-bg)</span>, <span class="mono">var(--ns-text)</span> and so on.</p>
+      <div class="pal" id="palettes"></div>
+      <div class="add"><input type="text" id="newPalette" placeholder="new-palette-name" aria-label="New palette name"><button type="button" class="btn" id="addPalette">Add palette</button></div>
+      <div class="msg" id="palMsg"></div>
+    </section>
+
+    <section id="tab-json" hidden>
+      <h2>Config file</h2>
+      <p class="lede">The whole configuration as JSON. This is the same document the <span class="mono">nightshade</span> CLI edits in <span class="mono">~/.nightshade/config.json</span>. Edit, validate and save here, or import a file.</p>
+      <textarea id="json" spellcheck="false" aria-label="Configuration JSON"></textarea>
+      <div class="add">
+        <button type="button" class="btn pri" id="saveJson">Validate and save</button>
+        <button type="button" class="btn" id="exportJson">Export file</button>
+        <label class="btn" for="importJson">Import file</label><input type="file" id="importJson" accept="application/json,.json" hidden>
+      </div>
+      <div class="msg" id="jsonMsg"></div>
+    </section>
+
+    <section id="tab-agent" hidden>
+      <h2>Agent bridge</h2>
+      <p class="lede">Lets an AI agent (or you, from a terminal) change Nightshade through a config file and a CLI. Changes show up in open tabs within a second.</p>
+      <p id="bridgeState"></p>
+      <pre>npm link                       # in a clone; puts nightshade on your PATH
+nightshade bridge install      # registers the bridge with Chrome
+nightshade set linkedin.com --mode native --contrast-floor 4.5
+nightshade fix add mail.google.com '[role=checkbox]' strengthen-border</pre>
+      <p class="muted">Extension ID: <span class="mono" id="extId"></span></p>
+      <button type="button" class="btn" id="reconnect">Reconnect</button>
+    </section>
+  </main>
+</div>
+<script src="options.js" type="module"></script>
+</body>
+</html>

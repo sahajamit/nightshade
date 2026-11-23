@@ -1,0 +1,37 @@
+name: Bug report
+description: A site looks wrong, or something in Nightshade does not work
+labels: [bug]
+body:
+  - type: input
+    id: url
+    attributes:
+      label: Site
+      description: The page where it happens, if it is public.
+      placeholder: https://example.com/page
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode shown in the popup
+      options: [Off, Native, Dynamic, Filter, Bespoke, Not sure]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens, and what you expected
+      description: A screenshot helps a lot. Please check it shows nothing private.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Nightshade version, browser and OS
+      placeholder: 0.1.0, Chrome 142, macOS 15
+    validations:
+      required: true
+  - type: textarea
+    id: rule
+    attributes:
+      label: Site rule (optional)
+      description: Output of `nightshade site <url> --json`, if you use the CLI.
+      render: json
