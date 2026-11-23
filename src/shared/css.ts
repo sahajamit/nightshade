@@ -82,6 +82,9 @@ export function fixesCSS(fixes: Fix[], palette: Palette, pageIsDark = true): str
             case 'hide':
                 out.push(`${s} { display: none !important; }`);
                 break;
+            case 'darken':
+                // Applied by the content script, which tags only the light panels it finds.
+                break;
         }
     }
     return out.join('\n');

@@ -74,7 +74,7 @@ function render() {
     $<HTMLSelectElement>('floor').value = String(look.contrastFloor);
     $('icons').setAttribute('aria-pressed', String(look.iconRescue));
     const pal = $<HTMLSelectElement>('palette');
-    pal.innerHTML = Object.keys(config.palettes).map((n) => `<option value="${n}">${n}</option>`).join('');
+    pal.replaceChildren(...Object.keys(config.palettes).map((n) => new Option(n, n)));
     pal.value = look.paletteName;
     $('paletteRow').hidden = mode !== 'bespoke';
     $('reset').hidden = !rule;
@@ -97,18 +97,21 @@ async function refreshPage() {
 async function renderBridge() {
     const s: BridgeStatus = await chrome.runtime.sendMessage({type: 'bridgeStatus'});
     const el = $('bridge');
-    if (s.state === 'connected') {
-        el.innerHTML = `<span class="dot ok"></span>Agent bridge connected`;
-        el.title = s.path ?? '';
+    // Built with DOM nodes, not markup: the error text can quote the config file.
+    const show = (dot: string, text: string, title: string) => {
+        const span = document.createElement('span');
+        span.className = `dot ${dot}`.trim();
+        el.replaceChildren(span, text);
+        el.title = title;
+    };
+    if (s.state === 'connected' && s.error) {
+        show('bad', s.error, s.path ?? '');
+    } else if (s.state === 'connected') {
+        show('ok', 'Agent bridge connected', s.path ?? '');
     } else if (s.state === 'not-installed') {
-        el.innerHTML = `<span class="dot"></span>Agent bridge not installed`;
-        el.title = 'Run: nightshade bridge install';
+        show('', 'Agent bridge not installed', 'Run: nightshade bridge install');
     } else {
-        el.innerHTML = `<span class="dot warn"></span>Agent bridge ${s.state}`;
-        el.title = s.error ?? '';
-    }
-    if (s.error && s.state === 'connected') {
-        el.innerHTML = `<span class="dot bad"></span>${s.error}`;
+        show('warn', `Agent bridge ${s.state}`, s.error ?? '');
     }
 }
 

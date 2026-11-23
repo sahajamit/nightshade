@@ -9,6 +9,7 @@ import {
 import {hostOf, matchScore, siteKeyForHost} from '../shared/match';
 import type {PageState, Request, ResolveResponse} from '../shared/messages';
 import {bridgeStatus, connectBridge, reconnectBridge} from './bridge';
+import {mayHandle, patternCoversUrl, senderKind} from '../shared/trust';
 import {analyzeImage, fetchForPage} from './images';
 import {getConfig, getPauses, saveConfig, setPause} from './store';
 
@@ -95,12 +96,20 @@ chrome.tabs.onRemoved.addListener((id) => pageStates.delete(id));
 // ---------------------------------------------------------------------------
 // Messages
 // ---------------------------------------------------------------------------
+const EXTENSION_ORIGIN = chrome.runtime.getURL('').replace(/\/$/, '');
+
 async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promise<unknown> {
+    // Content scripts live inside web pages: they get the page-rendering messages only.
+    // Reading or changing the config is reserved for the popup and the options page.
+    const kind = senderKind(sender, chrome.runtime.id, EXTENSION_ORIGIN);
+    if (!mayHandle(msg?.type, kind)) {
+        throw new Error('Not allowed from this sender');
+    }
     switch (msg.type) {
         case 'resolve':
             return handleResolve(msg.frameUrl, msg.isTop, sender.tab?.url);
         case 'fetch':
-            return fetchForPage(msg.url, msg.as);
+            return fetchForPage(msg.url);
         case 'analyzeImage':
             return analyzeImage(msg.url);
         case 'pageState':
@@ -122,6 +131,10 @@ async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promi
             const pattern = msg.pattern ?? siteKeyForHost(hostOf(sender.tab?.url ?? sender.url ?? ''));
             if (!pattern) {
                 return null;
+            }
+            // The picker runs in the page, so it can only add fixes for the site it is on.
+            if (kind === 'content-script' && !patternCoversUrl(pattern, sender.tab?.url)) {
+                throw new Error('A page can only add fixes for its own site');
             }
             const existing = config.sites.find((s) => s.match.includes(pattern));
             const fixes = [...(existing?.fixes ?? []).filter((f) => f.selector !== msg.fix.selector), msg.fix];

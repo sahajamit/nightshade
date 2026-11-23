@@ -10,7 +10,7 @@
  * from the page's own colours (after Dark Reader) and heals itself when the page changes.
  * Elements are tagged with data-ns-c tokens; one CSS rule per distinct token.
  */
-import {ensureContrast, parseColour, toHex, type RGBA} from '../shared/color';
+import {ensureContrast, luminance, parseColour, toHex, type RGBA} from '../shared/color';
 import {analyzeSvg} from '../background/images';
 import type {ImageVerdict} from '../shared/messages';
 import type {Resolved} from '../shared/types';
@@ -40,7 +40,15 @@ export interface BoostStats {
 interface Options {
     look: Resolved['look'];
     pageIsDark: boolean;
+    /** Selectors from "darken" fixes: light panels inside them get inverted. */
+    darken?: string[];
 }
+
+const DARKEN_ATTR = 'data-ns-darken';
+const KEEP_ATTR = 'data-ns-keep';
+/** A panel smaller than this is a button or chip, not a reading area. */
+const ISLAND_MIN_W = 160;
+const ISLAND_MIN_H = 80;
 
 let options: Options | null = null;
 let observer: MutationObserver | null = null;
@@ -99,6 +107,11 @@ function staticRules(look: Resolved['look']): string {
     if (look.imageDim < 100) {
         rules.push(`[${DIM_ATTR}] { filter: brightness(${look.imageDim}%) !important; }`);
     }
+    // Darkened panels: invert the panel, then flip photos and video back. contrast(.88) keeps
+    // white from becoming pure black and text from becoming pure white.
+    rules.push(`[${DARKEN_ATTR}] { filter: invert(1) hue-rotate(180deg) contrast(0.88) !important; }`);
+    rules.push(`[${DARKEN_ATTR}] :is(img, video, picture, canvas, iframe, embed, object, svg image, [style*="background-image"]):not([${KEEP_ATTR}]) { filter: invert(1) hue-rotate(180deg) !important; }`);
+    rules.push(`[${DARKEN_ATTR}] [${KEEP_ATTR}] { filter: none !important; }`);
     return rules.join('\n');
 }
 
@@ -146,6 +159,65 @@ function inViewportBand(el: Element): boolean {
     return r.bottom > -band && r.top < innerHeight + band;
 }
 
+function isLight(c: RGBA | null): boolean {
+    return Boolean(c) && luminance(c!) > 0.5;
+}
+
+/**
+ * Tags the light "islands" inside each darken selector: elements with their own light background
+ * whose surroundings are dark (or that are the region itself and light). Returns the tagged set.
+ */
+function findIslands(selectors: string[], bgCache: Map<Element, RGBA | null>, pageBg: RGBA): Set<Element> {
+    const islands = new Set<Element>();
+    for (const sel of selectors) {
+        let roots: Element[];
+        try {
+            roots = [...document.querySelectorAll(sel)];
+        } catch {
+            continue;
+        }
+        for (const root of roots) {
+            const r = root.getBoundingClientRect();
+            if (r.width < ISLAND_MIN_W || r.height < ISLAND_MIN_H) {
+                continue;
+            }
+            if (isLight(effectiveBackground(root, bgCache, pageBg))) {
+                // The whole region is light: but only darken it if what surrounds it is dark.
+                const outside = effectiveBackground(root.parentElement, bgCache, pageBg);
+                if (!isLight(outside)) {
+                    islands.add(root);
+                    continue;
+                }
+            }
+            // Otherwise look for the outermost light panels inside it.
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+            let el = walker.nextNode() as Element | null;
+            while (el) {
+                const rect = el.getBoundingClientRect();
+                let skipChildren = false;
+                if (rect.width >= ISLAND_MIN_W && rect.height >= ISLAND_MIN_H) {
+                    const own = parseColour(getComputedStyle(el).backgroundColor);
+                    if (own && own.a >= 0.9 && isLight(own) && !isLight(effectiveBackground(el.parentElement, bgCache, pageBg))) {
+                        islands.add(el);
+                        skipChildren = true;
+                    }
+                } else if (rect.width < ISLAND_MIN_W && rect.height < ISLAND_MIN_H) {
+                    skipChildren = true; // too small to contain a reading panel
+                }
+                let next: Node | null = skipChildren ? null : walker.firstChild();
+                if (!next) {
+                    next = walker.nextSibling();
+                    while (!next && walker.parentNode() && walker.currentNode !== root) {
+                        next = walker.nextSibling();
+                    }
+                }
+                el = next as Element | null;
+            }
+        }
+    }
+    return islands;
+}
+
 function pass(): void {
     if (!options || running) {
         return;
@@ -162,14 +234,23 @@ function pass(): void {
         return c && c.a > 0.5 ? c : pageIsDark ? {r: 24, g: 26, b: 27, a: 1} : WHITE;
     })();
     const tokens = new Map<Element, Set<string>>();
-    const iconChecks: Array<{el: Element; url: string}> = [];
+    const iconChecks: Array<{el: Element; url: string; inIsland: boolean}> = [];
     const dims: Element[] = [];
+    const islands = options.darken?.length ? findIslands(options.darken, bgCache, pageBg) : new Set<Element>();
+    const inIsland = (el: Element) => {
+        for (const i of islands) {
+            if (i.contains(el)) {
+                return true;
+            }
+        }
+        return false;
+    };
 
     try {
         if (floor > 0) {
             // 1. Text
             for (const el of textElements()) {
-                if (!inViewportBand(el)) {
+                if (!inViewportBand(el) || (islands.size && inIsland(el))) {
                     continue;
                 }
                 const cs = getComputedStyle(el);
@@ -189,7 +270,7 @@ function pass(): void {
             // 2. Control borders (WCAG asks 3:1 for UI components; use the floor if lower).
             const borderTarget = Math.min(floor, 3);
             for (const el of document.querySelectorAll(CONTROL_SELECTOR)) {
-                if (!inViewportBand(el)) {
+                if (!inViewportBand(el) || (islands.size && inIsland(el))) {
                     continue;
                 }
                 const cs = getComputedStyle(el);
@@ -209,7 +290,7 @@ function pass(): void {
             // 3. Small monochrome SVG icons and mask-image icons.
             for (const svg of document.querySelectorAll('svg')) {
                 const r = svg.getBoundingClientRect();
-                if (r.width === 0 || r.width > ICON_MAX || r.height > ICON_MAX || !inViewportBand(svg)) {
+                if (r.width === 0 || r.width > ICON_MAX || r.height > ICON_MAX || !inViewportBand(svg) || (islands.size && inIsland(svg))) {
                     continue;
                 }
                 const bg = effectiveBackground(svg.parentElement, bgCache, pageBg);
@@ -273,12 +354,12 @@ function pass(): void {
                     continue;
                 }
                 const f = getComputedStyle(img).filter;
-                if (f && f !== 'none' && img.getAttribute(ICON_ATTR) === null) {
+                if (f && f !== 'none' && img.getAttribute(ICON_ATTR) === null && img.getAttribute(KEEP_ATTR) === null && !(islands.size && inIsland(img))) {
                     continue; // something (a site fix) already handles it
                 }
                 const src = img.currentSrc || img.src;
                 if (src) {
-                    iconChecks.push({el: img, url: src});
+                    iconChecks.push({el: img, url: src, inIsland: islands.size > 0 && inIsland(img)});
                 }
             }
             for (const el of document.querySelectorAll('[role=button], [role=checkbox], [role=menuitem], [role=tab], [role=link], button, a, [aria-label], [data-tooltip]')) {
@@ -295,7 +376,7 @@ function pass(): void {
                     if (cs.filter && cs.filter !== 'none' && target.getAttribute(ICON_ATTR) === null) {
                         continue;
                     }
-                    iconChecks.push({el: target, url});
+                    iconChecks.push({el: target, url, inIsland: islands.size > 0 && inIsland(target)});
                 }
             }
         }
@@ -333,6 +414,12 @@ function pass(): void {
             }
         });
     }
+    for (const el of document.querySelectorAll(`[${DARKEN_ATTR}]`)) {
+        if (!islands.has(el)) {
+            el.removeAttribute(DARKEN_ATTR);
+        }
+    }
+    islands.forEach((el) => el.getAttribute(DARKEN_ATTR) === null && el.setAttribute(DARKEN_ATTR, ''));
     const dimSet = new Set(dims);
     for (const el of document.querySelectorAll(`[${DIM_ATTR}]`)) {
         if (!dimSet.has(el)) {
@@ -345,9 +432,17 @@ function pass(): void {
 
     // Icon verdicts arrive asynchronously.
     const want = pageIsDark ? 'light' : 'dark';
-    for (const {el, url} of iconChecks) {
+    for (const {el, url, inIsland: island} of iconChecks) {
         void verdictFor(url).then((v) => {
             if (!options || !v || !v.mono) {
+                return;
+            }
+            if (island) {
+                // A glyph inside a darkened panel: let the panel's invert flip it to light.
+                if (v.dark && el.getAttribute(KEEP_ATTR) === null) {
+                    el.setAttribute(KEEP_ATTR, '');
+                    stats.iconsRescued++;
+                }
                 return;
             }
             const needs = pageIsDark ? v.dark : v.light;
@@ -387,7 +482,7 @@ function onMutations(records: MutationRecord[]) {
                 return;
             }
         }
-        if (r.type === 'attributes' && r.attributeName !== ATTR && r.attributeName !== ICON_ATTR && r.attributeName !== DIM_ATTR) {
+        if (r.type === 'attributes' && ![ATTR, ICON_ATTR, DIM_ATTR, DARKEN_ATTR, KEEP_ATTR].includes(r.attributeName ?? '')) {
             schedule();
             return;
         }
@@ -396,7 +491,7 @@ function onMutations(records: MutationRecord[]) {
 
 export function startBoosts(opts: Options): void {
     options = opts;
-    const active = opts.look.contrastFloor > 0 || opts.look.iconRescue || opts.look.imageDim < 100;
+    const active = opts.look.contrastFloor > 0 || opts.look.iconRescue || opts.look.imageDim < 100 || Boolean(opts.darken?.length);
     if (!active) {
         stopBoosts();
         return;
@@ -424,7 +519,7 @@ export function stopBoosts(): void {
         timer = undefined;
     }
     removeOwnStyle(STYLE_ID);
-    for (const attr of [ATTR, ICON_ATTR, DIM_ATTR]) {
+    for (const attr of [ATTR, ICON_ATTR, DIM_ATTR, DARKEN_ATTR, KEEP_ATTR]) {
         document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr));
     }
     stats = {contrastFixes: 0, iconsRescued: 0};

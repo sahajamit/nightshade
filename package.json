@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "Per-site dark mode for Chrome that you, or your AI agent, configure site by site.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sahajamit/nightshade.git"
+  },
+  "homepage": "https://github.com/sahajamit/nightshade#readme",
+  "bugs": {
+    "url": "https://github.com/sahajamit/nightshade/issues"
+  },
   "private": true,
   "type": "module",
   "bin": {
@@ -14,6 +22,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "node scripts/build.mjs && node test/e2e/run.mjs",
+    "package": "node scripts/package.mjs",
     "icons": "node scripts/make-icons.mjs",
     "update-fixes": "node scripts/update-fixes.mjs"
   },

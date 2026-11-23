@@ -72,6 +72,56 @@ export function isColour(v: unknown): v is string {
     return typeof v === 'string' && HEX.test(v.trim());
 }
 
+/**
+ * Selectors and font names are pasted into a stylesheet, so they must not be able to end
+ * their rule early or swallow the rules that follow. Returns what is wrong with the text, or
+ * null when it is safe: one line, every quote and bracket closed, and (outside quoted
+ * strings) no braces, semicolons, comments or at-rules.
+ */
+export function cssFragmentProblem(text: string): string | null {
+    if (/[\n\r\f]/.test(text)) {
+        return 'must be on one line';
+    }
+    if (/^\s*@/.test(text)) {
+        return 'must not start with @';
+    }
+    const closers: string[] = [];
+    let quote: string | null = null;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === '\\') {
+            if (i === text.length - 1) {
+                return 'must not end with a backslash';
+            }
+            i++;
+            continue;
+        }
+        if (quote) {
+            if (ch === quote) {
+                quote = null;
+            }
+            continue;
+        }
+        if (ch === '"' || ch === "'") {
+            quote = ch;
+        } else if (ch === '{' || ch === '}' || ch === ';') {
+            return 'must not contain braces or semicolons';
+        } else if ((ch === '/' && text[i + 1] === '*') || (ch === '*' && text[i + 1] === '/') || text.startsWith('<!--', i) || text.startsWith('-->', i)) {
+            return 'must not contain comments';
+        } else if (ch === '(' || ch === '[') {
+            closers.push(ch === '(' ? ')' : ']');
+        } else if (ch === ')' || ch === ']') {
+            if (closers.pop() !== ch) {
+                return 'has unbalanced brackets';
+            }
+        }
+    }
+    if (quote) {
+        return 'has an unclosed quote';
+    }
+    return closers.length ? 'has unbalanced brackets' : null;
+}
+
 function num(v: unknown, min: number, max: number, path: string, problems: string[]): number | undefined {
     if (v === undefined) {
         return undefined;
@@ -118,7 +168,7 @@ function validateLook(src: any, path: string, problems: string[], palettes: Reco
         }
     }
     if (src.fontFamily !== undefined) {
-        if (typeof src.fontFamily === 'string' && !/[{};<>]/.test(src.fontFamily)) {
+        if (typeof src.fontFamily === 'string' && !/[<>]/.test(src.fontFamily) && !cssFragmentProblem(src.fontFamily)) {
             out.fontFamily = src.fontFamily;
         } else {
             problems.push(`${path}.fontFamily must be a plain font name`);
@@ -139,8 +189,13 @@ function validateFix(src: any, path: string, problems: string[]): Fix | null {
         problems.push(`${path} must be an object`);
         return null;
     }
-    if (typeof src.selector !== 'string' || !src.selector.trim() || /[{}]/.test(src.selector)) {
-        problems.push(`${path}.selector must be a CSS selector without braces`);
+    if (typeof src.selector !== 'string' || !src.selector.trim()) {
+        problems.push(`${path}.selector must be a CSS selector`);
+        return null;
+    }
+    const selectorProblem = cssFragmentProblem(src.selector);
+    if (selectorProblem) {
+        problems.push(`${path}.selector ${selectorProblem}`);
         return null;
     }
     if (!FIX_ACTIONS.includes(src.action)) {

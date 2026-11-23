@@ -1,6 +1,7 @@
 /** Fetching (for Dark Reader's cross-origin requests) and small-image analysis for Icon rescue. */
 import type {FetchResponse, ImageVerdict} from '../shared/messages';
 import {parseColour, rgbToHsl, luminance} from '../shared/color';
+import {fetchKind, isHttpUrl} from '../shared/trust';
 
 const MAX_BYTES = 8 * 1024 * 1024;
 
@@ -14,13 +15,25 @@ function toBase64(buf: ArrayBuffer): string {
     return btoa(s);
 }
 
-export async function fetchForPage(url: string, as: 'text' | 'bytes'): Promise<FetchResponse> {
+/**
+ * Dark Reader asks for cross-origin stylesheets and images. The request comes from a content
+ * script, so it is kept narrow: web URLs only, no cookies, and only CSS or image responses are
+ * handed back. Anything else (HTML, JSON, a local service's API) is refused.
+ */
+export async function fetchForPage(url: string): Promise<FetchResponse> {
+    if (!isHttpUrl(url)) {
+        return {ok: false, error: 'unsupported URL'};
+    }
     try {
         const res = await fetch(url, {credentials: 'omit', cache: 'force-cache'});
         if (!res.ok) {
             return {ok: false, error: `HTTP ${res.status}`};
         }
         const contentType = res.headers.get('content-type') ?? '';
+        const as = fetchKind(contentType);
+        if (!as) {
+            return {ok: false, error: 'not a stylesheet or an image'};
+        }
         const buf = await res.arrayBuffer();
         if (buf.byteLength > MAX_BYTES) {
             return {ok: false, error: 'too large'};
@@ -117,6 +130,9 @@ async function analyzeBitmap(blob: Blob): Promise<ImageVerdict | null> {
 export async function analyzeImage(url: string): Promise<ImageVerdict | null> {
     if (verdicts.has(url)) {
         return verdicts.get(url) ?? null;
+    }
+    if (!isHttpUrl(url)) {
+        return null;
     }
     try {
         const res = await fetch(url, {credentials: 'omit', cache: 'force-cache'});

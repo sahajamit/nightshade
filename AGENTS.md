@@ -23,6 +23,7 @@ Nightshade is a Chrome extension for per-site dark mode. You change it through t
 | "Checkboxes are hard to see" | `nightshade fix add <site> '[role=checkbox]' strengthen-border` |
 | "Google Docs looks broken" | `nightshade set docs.google.com --mode filter` |
 | "Use my own colours on this site" | `nightshade palette set mine --bg '#1b1d21' --text '#ece6dc'` then `nightshade set <site> --mode bespoke --palette mine` |
+| "The open email is still bright white" (site is dark, one panel is white) | `nightshade fix add mail.google.com body darken` |
 | "Hide that promo banner" | `nightshade fix add <site> '<selector>' hide` |
 | "Undo the last fix" | `nightshade fix list <site>` then `nightshade fix rm <site> <index>` |
 | "Leave dark sites alone" (default) | `nightshade global --unlisted skip-already-dark` |
@@ -47,10 +48,14 @@ The most specific pattern wins. A path beats a host; a longer host beats a short
 
 ## Choosing selectors for fixes
 
-Prefer selectors that survive site redesigns: `[aria-label="Delete"]`, `[role=checkbox]`, `[data-testid="send"]`. Avoid hashed class names like `.T-I-KE` or `.css-1x2y3z`; they change on every deploy. Fix actions: `make-visible`, `invert`, `set-colour` (needs `--colour #hex`), `strengthen-border`, `leave-untouched`, `hide`.
+Prefer selectors that survive site redesigns: `[aria-label="Delete"]`, `[role=checkbox]`, `[data-testid="send"]`. Avoid hashed class names like `.T-I-KE` or `.css-1x2y3z`; they change on every deploy. Fix actions: `make-visible`, `invert`, `set-colour` (needs `--colour #hex`), `strengthen-border`, `leave-untouched`, `hide`, `darken`.
+
+`darken` is for dark sites with a bright panel in them. It looks inside the selector for large light panels whose surroundings are dark, inverts only those, and flips photos back. If the site later darkens the panel itself, the fix stops applying. `body` is a fine selector for it.
 
 ## Working on the code
 
 - `npm run build`, `npm run typecheck`, `npm test`, `npm run test:e2e`.
 - Shared logic lives in `src/shared` and is used by the extension and the CLI alike. Validation changes go in `src/shared/config.ts` and need a unit test.
+- The service worker only accepts a short allow-list of messages from content scripts (`src/shared/trust.ts`). Content scripts cannot read extension storage; they are told about changes with a `configChanged` message. See `SECURITY.md`.
+- Icons are generated from `assets/logo/nightshade-logo.png` with `npm run icons`. `npm run package` builds the release zips.
 - After a build, reload the unpacked extension in `chrome://extensions` to pick up changes.

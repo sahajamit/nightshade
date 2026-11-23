@@ -38,7 +38,7 @@ export interface BridgeStatus {
 
 export type Request =
     | {type: 'resolve'; frameUrl: string; isTop: boolean}
-    | {type: 'fetch'; url: string; as: 'text' | 'bytes'}
+    | {type: 'fetch'; url: string}
     | {type: 'analyzeImage'; url: string}
     | {type: 'pageState'; state: PageState}
     | {type: 'getConfig'}

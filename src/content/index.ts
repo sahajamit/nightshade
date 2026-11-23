@@ -39,8 +39,8 @@ addFallback();
 
 // --- Dark Reader needs a way to fetch cross-origin CSS and images. ---
 DarkReader.setFetchMethod(async (url: string) => {
-    const isText = /\.css(\?|#|$)/i.test(url) || !/\.(png|jpe?g|gif|webp|avif|svg|ico|bmp)(\?|#|$)/i.test(url);
-    const res = (await sendToBackground<FetchResponse>({type: 'fetch', url, as: isText ? 'text' : 'bytes'}));
+    // The background decides text or bytes from the response's content type.
+    const res = (await sendToBackground<FetchResponse>({type: 'fetch', url}));
     if (!res || !res.ok) {
         throw new Error(`Nightshade could not fetch ${url}: ${res && !res.ok ? res.error : 'no response'}`);
     }
@@ -189,21 +189,15 @@ async function apply(): Promise<void> {
     if (mode === 'filter') {
         stopBoosts();
     } else {
-        startBoosts({look: r.look, pageIsDark});
+        startBoosts({look: r.look, pageIsDark, darken: r.fixes.filter((f) => f.action === 'darken').map((f) => f.selector)});
     }
     state = {url: location.href, mode, reason, matchedPattern: r.matchedPattern, boosts: boostStats()};
     report();
 }
 
 // Re-apply when the config or a pause changes (popup, options page, CLI via the bridge).
+// The service worker tells us; content scripts have no access to the extension's storage.
 let pending: number | undefined;
-chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local' || !(changes.config || changes.paused)) {
-        return;
-    }
-    clearTimeout(pending);
-    pending = window.setTimeout(() => void apply(), 30);
-});
 
 // SPA navigations can change which path rule applies.
 let lastHref = location.href;
@@ -215,6 +209,11 @@ setInterval(() => {
 }, 1000);
 
 onBackgroundMessage((msg, _sender, sendResponse) => {
+    if (msg?.type === 'configChanged') {
+        clearTimeout(pending);
+        pending = window.setTimeout(() => void apply(), 30);
+        return false;
+    }
     if (msg?.type === 'getPageState') {
         if (!isTop) {
             return false;

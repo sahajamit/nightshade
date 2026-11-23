@@ -33,9 +33,20 @@ export function serialise(config: Config): string {
 export function writeConfig(config: Config, path = configPath()): string {
     const valid = validateConfig(config);
     const text = serialise(valid);
-    mkdirSync(dirname(path), {recursive: true});
+    // 0700 on creation: the config decides what CSS is injected into every page.
+    mkdirSync(dirname(path), {recursive: true, mode: 0o700});
     const tmp = `${path}.${process.pid}.tmp`;
     writeFileSync(tmp, text, {mode: 0o600});
     renameSync(tmp, path);
     return text;
+}
+
+/** Quotes a value for /bin/sh. Single quotes, so $, backticks and spaces stay literal. */
+export function shellQuote(value: string): string {
+    return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+/** Chrome extension IDs are 32 letters from a to p. */
+export function isExtensionId(value: string): boolean {
+    return /^[a-p]{32}$/.test(value);
 }

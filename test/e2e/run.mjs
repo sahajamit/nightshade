@@ -207,6 +207,22 @@ await test('picker saves a fix to the site rule and the config file', async () =
     await page.close();
 });
 
+await test('darken bright areas: white reading pane on a dark page is inverted, photos restored', async () => {
+    cli('set', '127.0.0.1', '--mode', 'native');
+    cli('fix', 'add', '127.0.0.1', '[role="main"]', 'darken');
+    const page = await context.newPage();
+    await page.goto(`${base}/mail-thread.html`);
+    await waitFor(async () => (await page.getAttribute('#pane', 'data-ns-darken')) !== null, {message: 'pane tagged'});
+    assert.equal(await page.getAttribute('#main', 'data-ns-darken'), null, 'the dark region itself is not inverted');
+    assert.equal(await page.getAttribute('#toolbar', 'data-ns-darken'), null, 'toolbar untouched');
+    assert.match(await page.evaluate(() => getComputedStyle(document.getElementById('pane')).filter), /invert\(1\)/);
+    assert.match(await page.evaluate(() => getComputedStyle(document.getElementById('avatar')).filter), /invert\(1\)/, 'photo flipped back');
+    await waitFor(async () => (await page.getAttribute('#paneIcon', 'data-ns-keep')) !== null, {message: 'dark glyph in pane kept inverted'});
+    await page.screenshot({path: join(artifacts, 'mail-thread-darkened.png')});
+    cli('fix', 'rm', '127.0.0.1', '[role="main"]');
+    await page.close();
+});
+
 await test('invalid hand edit is rejected and settings stay intact', async () => {
     const {writeFileSync} = await import('node:fs');
     const path = join(home, 'config.json');

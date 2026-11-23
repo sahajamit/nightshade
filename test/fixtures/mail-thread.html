@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Mail thread</title>
+<style>
+  /* Imitates webmail in its own dark theme, where the open message still renders on white. */
+  body { font: 14px/1.5 system-ui, sans-serif; background: #1f1f1f; color: #e3e3e3; margin: 0; }
+  .side { position: fixed; left: 0; top: 0; bottom: 0; width: 200px; padding: 16px; }
+  main { margin-left: 232px; padding-right: 24px; }
+  .toolbar { display: flex; gap: 20px; padding: 14px 8px; }
+  .pane { background: #ffffff; color: #1f1f1f; border-radius: 16px; padding: 24px 28px; min-height: 420px; }
+  .pane h2 { font-weight: 400; font-size: 22px; margin: 0 0 18px; }
+  .from { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+  .from b { color: #1f1f1f; } .from span { color: #5e5e5e; }
+  .actions { display: flex; gap: 12px; margin-left: auto; }
+  .reply { display: inline-block; border: 1px solid #747775; border-radius: 18px; padding: 8px 18px; color: #1f1f1f; margin-top: 24px; }
+  a { color: #0b57d0; }
+</style></head>
+<body>
+  <nav class="side">Inbox<br>Sent<br>Drafts</nav>
+  <main role="main" id="main">
+    <div class="toolbar" id="toolbar">
+      <div role="button" aria-label="Archive"><svg width="20" height="20" viewBox="0 0 20 20"><path fill="#c4c7c5" d="M3 3h14v4H3zm1 5h12v9H4z"/></svg></div>
+      <div role="button" aria-label="Delete"><svg width="20" height="20" viewBox="0 0 20 20"><path fill="#c4c7c5" d="M6 3h8v2h3v2H3V5h3zm-1 5h10l-1 10H6z"/></svg></div>
+    </div>
+    <div class="pane" id="pane">
+      <h2 id="subject">Partnership idea for the channel</h2>
+      <div class="from">
+        <img id="avatar" src="icons/avatar.svg" width="40" height="40" alt="">
+        <div><b>Sample Sender</b> <span>&lt;sender@example.com&gt;</span></div>
+        <div class="actions"><div role="button" aria-label="Reply"><img id="paneIcon" src="icons/trash.svg" width="20" height="20" alt=""></div></div>
+      </div>
+      <p id="bodyText">Hi there, this is the body of an email. It renders on a white panel even though the rest of the app is dark, which is exactly what hurts at night. Here is a <a href="#">link</a>.</p>
+      <div class="reply" role="button">Reply</div>
+    </div>
+  </main>
+</body></html>

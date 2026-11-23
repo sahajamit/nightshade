@@ -10,12 +10,21 @@ import {dirname, basename} from 'node:path';
 import {configPath, readRaw, serialise, writeConfig} from '../cli/file';
 import {validateConfig} from '../shared/config';
 
-const VERSION = '0.1.0';
+declare const __VERSION__: string;
+const VERSION = typeof __VERSION__ === 'string' ? __VERSION__ : 'dev';
 const path = configPath();
 let lastText = '';
 
+/** Chrome drops the connection if a host sends more than 1 MB in one message. */
+const MAX_TO_BROWSER = 1024 * 1024;
+/** Far above any real config. Anything bigger is not a message from our extension. */
+const MAX_FROM_BROWSER = 8 * 1024 * 1024;
+
 function send(msg: unknown) {
-    const body = Buffer.from(JSON.stringify(msg), 'utf8');
+    let body = Buffer.from(JSON.stringify(msg), 'utf8');
+    if (body.length > MAX_TO_BROWSER) {
+        body = Buffer.from(JSON.stringify({type: 'error', message: `${basename(path)} is too large to sync (over 1 MB).`}), 'utf8');
+    }
     const head = Buffer.alloc(4);
     head.writeUInt32LE(body.length, 0);
     process.stdout.write(Buffer.concat([head, body]));
@@ -72,6 +81,9 @@ process.stdin.on('data', (chunk: Buffer) => {
     buf = Buffer.concat([buf, chunk]);
     while (buf.length >= 4) {
         const len = buf.readUInt32LE(0);
+        if (len > MAX_FROM_BROWSER) {
+            process.exit(1);
+        }
         if (buf.length < 4 + len) {
             break;
         }

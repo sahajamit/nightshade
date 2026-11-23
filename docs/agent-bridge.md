@@ -21,13 +21,15 @@ If the host isn't installed, the extension retries every five minutes and otherw
 
 ## Extension IDs
 
-Native messaging only accepts extensions listed in the manifest's `allowed_origins`. The development build has a fixed public key in `extension/manifest.json`, so an unpacked copy always gets the same ID (`cilhiaedhodolblheagjkpjgfnananpf`), and `bridge install` allows that ID by default.
+Native messaging only accepts extensions listed in the manifest's `allowed_origins`. Every build (from source, or a zip from GitHub Releases) has a fixed public key in `extension/manifest.json`, so an unpacked copy always gets the same ID (`cilhiaedhodolblheagjkpjgfnananpf`), and `bridge install` allows that ID by default. Only the public half of the key is in the repository; the ID does not depend on who built the copy or where it is unzipped.
 
 A Chrome Web Store build (`node scripts/build.mjs --store`) drops the key and gets an ID from the store. Allow it with:
 
 ```sh
 nightshade bridge install --extension-id <store-id>
 ```
+
+The same flag covers a fork that changes or removes the key: copy the ID from `chrome://extensions`. IDs are checked (32 letters, a to p) and nothing else is ever added to `allowed_origins`.
 
 ## Custom locations
 

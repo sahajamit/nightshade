@@ -19,6 +19,7 @@ const ACTIONS: Array<{action: FixAction; label: string; key: string}> = [
     {action: 'strengthen-border', label: 'Strengthen border', key: '4'},
     {action: 'leave-untouched', label: 'Leave untouched', key: '5'},
     {action: 'hide', label: 'Hide it', key: '6'},
+    {action: 'darken', label: 'Darken bright areas', key: '7'},
 ];
 
 function looksGenerated(token: string): boolean {

@@ -5,6 +5,8 @@ Nightshade includes code and data from Dark Reader (https://github.com/darkreade
 - the `darkreader` npm package (bundled into `content.js`)
 - `vendor/darkreader/dynamic-theme-fixes.config`, `inversion-fixes.config` and `dark-sites.config` (bundled into `background.js`)
 
+The fix lists are unmodified copies of the files in Dark Reader's `src/config` folder (refreshed with `npm run update-fixes`); the licence text is also kept next to them in `vendor/darkreader/LICENSE`. Nightshade is not affiliated with or endorsed by Dark Reader.
+
 Both are distributed under the following licence:
 
 ```

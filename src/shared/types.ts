@@ -29,9 +29,11 @@ export type FixAction =
     | 'set-colour'
     | 'strengthen-border'
     | 'leave-untouched'
-    | 'hide';
+    | 'hide'
+    /** Find large light panels inside the element (on an otherwise dark page) and invert them, photos restored. */
+    | 'darken';
 export const FIX_ACTIONS: readonly FixAction[] = [
-    'make-visible', 'invert', 'set-colour', 'strengthen-border', 'leave-untouched', 'hide',
+    'make-visible', 'invert', 'set-colour', 'strengthen-border', 'leave-untouched', 'hide', 'darken',
 ];
 
 export interface Fix {
