@@ -12,8 +12,10 @@ Nightshade is a Chrome extension for per-site dark mode. All of its settings liv
 1. Check the CLI works: `nightshade version`. If it is not found, see "Running the CLI" at the end.
 2. See what applies now: `nightshade site <url-or-domain>` (the rule that matches, and why) or `nightshade show` (everything).
 3. Make the smallest change that answers the request. Prefer a site rule over a global change.
-4. Add `--json` when you need to parse output. Exit code 1 means the change was rejected and nothing was written; the output lists the problems.
-5. Tell the user what you changed, in one line. If `nightshade bridge status` says the bridge is not connected, tell them to open Nightshade's options page, Agent bridge, Reconnect, or to use Config file, Import there.
+4. Preview with `--dry-run` when the change could reach more than the user meant: a bare domain (`github.com` also covers `gist.github.com`), a wildcard, or a global change. It prints what each pattern covers and every setting it would change, and writes nothing. If the scope is wider than the request, say so and ask, or pick a narrower pattern.
+5. Add `--json` when you need to parse output. Exit code 1 means the change was rejected and nothing was written; the output lists the problems.
+6. Tell the user what you changed and what it covers, in one line, and that `nightshade undo` reverts it.
+7. If `nightshade bridge status` says the bridge is not connected, tell them to open Nightshade's options page, Agent bridge, Reconnect, or to use Config file, Import there.
 
 ## Common requests
 
@@ -35,6 +37,8 @@ Nightshade is a Chrome extension for per-site dark mode. All of its settings liv
 | Checkboxes hard to see | `nightshade fix add example.com '[role=checkbox]' strengthen-border` |
 | Hide something | `nightshade fix add example.com '<selector>' hide` |
 | Undo a fix | `nightshade fix list example.com` then `nightshade fix rm example.com <index>` |
+| Undo the last change, whatever it was | `nightshade undo` (run again to go back further; `nightshade history` lists them) |
+| What would this change touch? | add `--dry-run` to the command |
 
 ## Own colours and themes
 

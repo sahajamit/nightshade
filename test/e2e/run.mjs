@@ -187,6 +187,25 @@ await test('filter mode inverts the page', async () => {
     await page.close();
 });
 
+await test('dry run changes nothing in the tab; undo reaches it through the bridge', async () => {
+    cli('set', '127.0.0.1', '--mode', 'filter');
+    const page = await context.newPage();
+    await page.goto(`${base}/light.html`);
+    const inverted = async () => (await page.evaluate(() => getComputedStyle(document.documentElement).filter)).includes('invert');
+    await waitFor(inverted, {message: 'filter first'});
+    const preview = cli('off', '127.0.0.1', '--dry-run');
+    assert.match(preview, /Dry run: nothing was written/);
+    assert.match(preview, /mode: filter -> off/);
+    await sleep(1500);
+    assert.ok(await inverted(), 'a dry run must not reach the tab');
+    cli('off', '127.0.0.1');
+    await waitFor(async () => (await pageState(page))?.mode === 'off', {message: 'off'});
+    assert.match(cli('undo'), /Undid "nightshade off 127\.0\.0\.1"/);
+    await waitFor(async () => (await pageState(page))?.mode === 'filter', {message: 'undo brought filter back'});
+    await waitFor(inverted, {message: 'inverted again'});
+    await page.close();
+});
+
 await test('picker saves a fix to the site rule and the config file', async () => {
     cli('set', '127.0.0.1', '--mode', 'dynamic');
     const page = await context.newPage();
@@ -204,6 +223,15 @@ await test('picker saves a fix to the site rule and the config file', async () =
     await waitFor(async () => (await page.evaluate(() => getComputedStyle(document.getElementById('hideme')).display)) === 'none', {message: 'element hidden'});
     const fixes = JSON.parse(cli('fix', 'list', '127.0.0.1', '--json'));
     assert.ok(fixes.some((f) => f.action === 'hide' && f.selector.includes('hideme')), `file has the fix: ${JSON.stringify(fixes)}`);
+    // The picker's fix came in through the bridge, not the CLI: undo must not silently drop it.
+    let refused = '';
+    try {
+        cli('undo');
+    } catch (e) {
+        refused = String(e.stderr);
+    }
+    assert.match(refused, /has changed since/, 'undo refuses after a change made in the extension');
+    assert.ok(JSON.parse(cli('fix', 'list', '127.0.0.1', '--json')).some((f) => f.action === 'hide'), 'picker fix kept');
     await page.close();
 });
 

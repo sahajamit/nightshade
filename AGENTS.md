@@ -10,6 +10,8 @@ If you are an agent on a user's machine rather than working on this repo, the sa
 - Read before you write: `nightshade site <url>` tells you which rule applies to a page and the effective settings.
 - Make the smallest change that answers the request. Prefer a site rule over a global change.
 - Add `--json` for machine-readable output. Exit code 1 means the change was rejected and nothing was written.
+- Preview with `--dry-run` when a change could reach more than the user meant (a bare domain also covers its subdomains; wildcards; global changes). It lists what each pattern covers and every setting it would change, and writes nothing.
+- Every CLI change is recorded. `nightshade undo` reverts the last one (run it again to go further back), `nightshade history` lists them. Undo refuses if the file changed since in the extension, so it never drops the user's own edits; `--force` overrides. Tell the user undo exists after a change.
 
 ## Common requests
 
@@ -28,6 +30,8 @@ If you are an agent on a user's machine rather than working on this repo, the sa
 | "The open email is still bright white" (site is dark, one panel is white) | `nightshade fix add mail.google.com body darken` |
 | "Hide that promo banner" | `nightshade fix add <site> '<selector>' hide` |
 | "Undo the last fix" | `nightshade fix list <site>` then `nightshade fix rm <site> <index>` |
+| "Undo that" / "that went too far" | `nightshade undo` |
+| "What would that change?" | the same command with `--dry-run` |
 | "Leave dark sites alone" (default) | `nightshade global --unlisted skip-already-dark` |
 | "Only change sites I list" | `nightshade global --unlisted only-listed` |
 
@@ -60,5 +64,6 @@ Prefer selectors that survive site redesigns: `[aria-label="Delete"]`, `[role=ch
 - Shared logic lives in `src/shared` and is used by the extension and the CLI alike. Validation changes go in `src/shared/config.ts` and need a unit test.
 - The service worker only accepts a short allow-list of messages from content scripts (`src/shared/trust.ts`). Content scripts cannot read extension storage; they are told about changes with a `configChanged` message. See `SECURITY.md`.
 - Icons are generated from `assets/logo/nightshade-logo.png` with `npm run icons`. `npm run package` builds the release zips.
+- Config writes go through `save()` in `src/cli/nightshade.ts`, which handles `--dry-run` and records history (`src/cli/history.ts`). Change descriptions and scope wording live in `src/cli/changes.ts`.
 - `skills/nightshade/SKILL.md` is the short version of this file for agents on users' machines. Keep the two in step: a unit test checks that the skill names every mode and fix action.
 - After a build, reload the unpacked extension in `chrome://extensions` to pick up changes.
