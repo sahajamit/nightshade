@@ -16,6 +16,8 @@ import {
     type Config, type ContrastFloor, type Fix, type FixAction, type Mode, type SiteRule,
 } from '../shared/types';
 import {configPath, isExtensionId, nightshadeDir, readRaw, shellQuote, writeConfig} from './file';
+import {describeChanges, diffConfigs, type Change} from './changes';
+import {dropEntry, HISTORY_LIMIT, listHistory, planUndo, recordChange} from './history';
 import {BRIDGE_HOST} from '../shared/messages';
 import {addPointer, agentTargets, pointerLine, removePointer, renderSkill, SKILL_MARKER} from './skill';
 import SKILL_SOURCE from '../../skills/nightshade/SKILL.md';
@@ -32,7 +34,7 @@ interface Args {
 }
 
 /** Switches that never take a value, so `--json example.com` keeps example.com as an argument. */
-const BOOLEAN_FLAGS = new Set(['json', 'force', 'clear', 'show', 'help', 'pointer']);
+const BOOLEAN_FLAGS = new Set(['json', 'force', 'clear', 'show', 'help', 'pointer', 'dry-run']);
 
 function parseArgs(argv: string[]): Args {
     const out: Args = {_: [], flags: {}};
@@ -61,13 +63,32 @@ function fail(message: string): never {
 }
 
 let jsonOut = false;
+/** --dry-run: commands run as usual, but save() keeps the result instead of writing it. */
+let dryRun = false;
+/** The command line, saved with each history entry. */
+let commandLine = 'nightshade';
+
+interface Output {
+    human: string;
+    data?: unknown;
+}
+
+/** Output is held until the command finishes, so dry runs and change summaries can replace or extend it. */
+let output: Output[] = [];
 
 function print(human: string, data?: unknown) {
-    if (jsonOut) {
-        process.stdout.write(`${JSON.stringify(data ?? {ok: true, message: human}, null, 2)}\n`);
-    } else {
-        process.stdout.write(`${human}\n`);
+    output.push({human, data});
+}
+
+function flush() {
+    for (const o of output) {
+        if (jsonOut) {
+            process.stdout.write(`${JSON.stringify(o.data ?? {ok: true, message: o.human}, null, 2)}\n`);
+        } else {
+            process.stdout.write(`${o.human}\n`);
+        }
     }
+    output = [];
 }
 
 // ---------------------------------------------------------------------------
@@ -78,8 +99,34 @@ function load(): Config {
     return raw === null ? defaultConfig() : validateConfig(raw);
 }
 
+function historyDir(): string {
+    return join(nightshadeDir(), 'history');
+}
+
+function currentText(): string | null {
+    return existsSync(configPath()) ? readFileSync(configPath(), 'utf8') : null;
+}
+
+function loadOrDefaults(): Config {
+    try {
+        return load();
+    } catch {
+        return defaultConfig();
+    }
+}
+
+/** What the last save() did (or, in a dry run, would have done). */
+let saved: {before: Config; after: Config} | null = null;
+
 function save(config: Config) {
-    writeConfig({...config, updatedAt: new Date().toISOString()});
+    const after = validateConfig({...config, updatedAt: new Date().toISOString()});
+    const before = loadOrDefaults();
+    if (!dryRun) {
+        const beforeText = currentText();
+        const text = writeConfig(after);
+        recordChange(historyDir(), beforeText, text, commandLine);
+    }
+    saved = {before, after};
 }
 
 // ---------------------------------------------------------------------------
@@ -436,6 +483,75 @@ function cmdExport(args: Args) {
     }
 }
 
+function cmdHistory() {
+    const entries = listHistory(historyDir());
+    if (!entries.length) {
+        print('No changes recorded yet.', {entries: []});
+        return;
+    }
+    const rows = entries.map((e, i) => ({step: i + 1, time: e.time, command: e.command}));
+    print([
+        `Recent changes, newest first (the last ${HISTORY_LIMIT} are kept). "nightshade undo" reverts the top one.`,
+        ...rows.map((r) => `  ${String(r.step).padStart(2)}  ${r.time.replace('T', ' ').slice(0, 19)}  ${r.command}`),
+    ].join('\n'), {entries: rows});
+}
+
+function cmdUndo(args: Args) {
+    const now = currentText();
+    const plan = planUndo(historyDir(), now);
+    if (!plan) {
+        fail('Nothing to undo. Changes made with the CLI are recorded from now on; see: nightshade history');
+    }
+    if (plan.changedSince && !args.flags.force) {
+        fail([
+            `The config file has changed since "${plan.entry.command}"`,
+            '(probably in the extension: the element picker or the options page).',
+            'Undo would throw that change away too. Look at it with: nightshade show',
+            'To undo anyway, run: nightshade undo --force',
+        ].join('\n'));
+    }
+    const current = loadOrDefaults();
+    const restored = validateConfig({
+        ...(plan.entry.before === null ? defaultConfig() : validateConfig(JSON.parse(plan.entry.before))),
+        // Newer wins when the extension and the file are reconciled, so the restored copy gets a fresh time.
+        updatedAt: new Date().toISOString(),
+    });
+    const changes = diffConfigs(current, restored);
+    if (dryRun) {
+        print([`Dry run: nothing was written. Undo would revert "${plan.entry.command}":`, ...describeChanges(changes)].join('\n'),
+            {ok: true, dryRun: true, undoes: plan.entry.command, changes});
+        return;
+    }
+    writeConfig(restored);
+    dropEntry(historyDir(), plan.entry);
+    print([`Undid "${plan.entry.command}":`, ...describeChanges(changes)].join('\n'), {ok: true, undid: plan.entry.command, changes});
+}
+
+/** After a command: a dry run replaces its output with the change list; a real change adds what it covers. */
+function summarise() {
+    if (!saved) {
+        return;
+    }
+    const changes: Change[] = diffConfigs(saved.before, saved.after);
+    if (dryRun) {
+        output = [];
+        print(['Dry run: nothing was written. This would change:', ...describeChanges(changes)].join('\n'), {ok: true, dryRun: true, changes});
+        return;
+    }
+    const last = output[output.length - 1];
+    if (!last) {
+        return;
+    }
+    const covers = changes.filter((c) => c.kind === 'site').flatMap((c) => c.target.split(', ').map((p, i) => `${p} covers ${c.covers?.[i] ?? ''}`));
+    if (covers.length) {
+        last.human = [last.human, ...covers].join('\n');
+    }
+    const data = last.data ?? {ok: true, message: last.human};
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+        last.data = {...data, changes};
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Bridge (native messaging host) installation
 // ---------------------------------------------------------------------------
@@ -699,6 +815,12 @@ Sites
   nightshade fix rm <pattern> <index|selector>
   nightshade css <pattern> --set "<css>" | --file <path> | --append "<css>" | --clear | --show
 
+Preview and undo
+  Add --dry-run to any command that changes settings: it prints which sites the change
+  covers and every setting it would change, and writes nothing.
+  nightshade undo [--force] [--dry-run]             Revert the most recent CLI change (again for the one before)
+  nightshade history                                The last ${HISTORY_LIMIT} CLI changes, newest first
+
 Global and palettes
   nightshade global [--enabled on|off] [--unlisted skip-already-dark|always|only-listed]
                     [--mode dynamic|filter|bespoke] [--palette name] [look options as above]
@@ -721,7 +843,13 @@ Add --json to any command for machine-readable output.`;
 export function main(argv = process.argv.slice(2)): void {
     const args = parseArgs(argv);
     jsonOut = Boolean(args.flags.json);
+    dryRun = Boolean(args.flags['dry-run']);
     delete args.flags.json;
+    delete args.flags['dry-run'];
+    commandLine = ['nightshade', ...argv.filter((a) => a !== '--json' && a !== '--dry-run')
+        .map((a) => (/^[\w@%+=:,./#-]+$/.test(a) ? a : shellQuote(a)))].join(' ');
+    output = [];
+    saved = null;
     const cmd = args._[0];
     try {
         switch (cmd) {
@@ -745,12 +873,17 @@ export function main(argv = process.argv.slice(2)): void {
             case 'bridge': cmdBridge(args); break;
             case 'skill': cmdSkill(args); break;
             case 'schema': cmdSchema(); break;
+            case 'undo': cmdUndo(args); break;
+            case 'history': cmdHistory(); break;
             case 'path': print(configPath(), {path: configPath()}); break;
             case 'version': case '--version': print(String(__VERSION__)); break;
             default:
                 fail(`Unknown command "${cmd}". Run: nightshade help`);
         }
+        summarise();
+        flush();
     } catch (e) {
+        output = [];
         process.exitCode = 1;
         const problems = e instanceof ConfigError ? e.problems : [(e as Error).message];
         if (jsonOut) {

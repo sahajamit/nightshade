@@ -61,6 +61,7 @@ So Nightshade is open source, never updates itself behind your back, keeps every
 | **Fixes for broken dark themes** | A contrast floor lifts dim text, icons and checkbox borders to 3:1, 4.5:1 or 7:1. Icon rescue lightens small dark icons. Both work by role and size, not class names, so they survive site redesigns. |
 | **Point and fix** | Click anything broken and choose *make visible*, *invert*, *set colour*, *strengthen border*, *leave untouched*, *hide* or *darken bright areas* (for a white panel on a dark site, like an open email). The fix is saved with a stable selector. |
 | **Agent-ready** | One JSON file, a CLI that validates every change, a bridge that updates open tabs within a second, and a skill for Claude Code, Codex, Gemini CLI and Cursor. |
+| **Preview and undo** | `--dry-run` shows which sites a change covers and every setting it would change, before anything is written. `nightshade undo` reverts the last change, one step at a time. |
 | **Private by design** | No analytics, no server, no remote code. MIT licensed. |
 
 <table>
@@ -124,8 +125,10 @@ Now start a new agent session and just ask, from any folder:
 | "Keep Gmail's own dark theme, but the open email is still white" | `nightshade set mail.google.com --mode native` then `nightshade fix add mail.google.com body darken` |
 | "Checkboxes on Gmail are hard to see" | `nightshade fix add mail.google.com '[role=checkbox]' strengthen-border` |
 | "Warmer, it's late" | `nightshade global --warmth 20` |
+| "What would that touch?" | the same command with `--dry-run` |
+| "Undo that" | `nightshade undo` |
 
-Every command validates before it writes and supports `--json`. Changes made in the popup are written back to the same file, so the file is always the full picture. Without the bridge, the extension works on its own and the options page imports and exports the file.
+Every command validates before it writes and supports `--json`. Add `--dry-run` to see what a change would do, including whether `github.com` also reaches its subdomains (it does), without writing anything. Each change is recorded: `nightshade history` lists the last 20 and `nightshade undo` steps back through them. Undo refuses if the file has changed since in the extension, so it never throws away your own edits. Changes made in the popup are written back to the same file, so the file is always the full picture. Without the bridge, the extension works on its own and the options page imports and exports the file.
 
 <details>
 <summary><b>Where the skill is installed, and options</b></summary>
